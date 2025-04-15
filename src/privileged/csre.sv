@@ -57,8 +57,8 @@ module csre import cvw::*;  #(parameter cvw_t P) (
   entropy_top #(.NUM_CELLS(9), .NUM_INV_START(9), .SIM_MODE(1)) entropy 
   (
     .clk(clk),
-    .rst(rst),
-    .enable_i(enable_i),
+    .rst(reset),
+    .enable_i(1'b1),
     .seed(NextSEED)
   );
   
@@ -72,17 +72,17 @@ module csre import cvw::*;  #(parameter cvw_t P) (
     end else if (P.U_SUPPORTED | P.S_SUPPORTED) begin
       IllegalCSREAccessM = 1'b0;
       case({PrivilegeModeW, MSECCFG_REGW[9:8]})
-        4'b11xx: begin
+        4'b11xx: begin  // Machine Mode
                         SEED_REGW = {{(P.XLEN-32){1'b0}}, NextSEED};
         end
-        4'b00x0: begin
+        4'b00x0: begin  // User Mode
                         SEED_REGW = '0;
                         IllegalCSREAccessM = 1'b1;
         end
         4'b00x1: begin
                         SEED_REGW = {{(P.XLEN-32){1'b0}}, NextSEED};
         end
-        4'b010x: begin
+        4'b010x: begin  // Supervisor Mode
                         SEED_REGW = '0;
                         IllegalCSREAccessM = 1'b1;
         end
