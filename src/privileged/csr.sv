@@ -98,7 +98,7 @@ module csr import cvw::*;  #(parameter cvw_t P) (
   localparam MIP = 12'h344;
   localparam SIP = 12'h144;
   
-  logic [P.XLEN-1:0]       CSRMReadValM, CSRSReadValM, CSRUReadValM, CSRCReadValM;
+  logic [P.XLEN-1:0]       CSRMReadValM, CSRSReadValM, CSRUReadValM, CSRCReadValM, CSREReadValM;
   logic [P.XLEN-1:0]       CSRReadValM;  
   logic [P.XLEN-1:0]       CSRSrcM;
   logic [P.XLEN-1:0]       CSRRWM, CSRRSM, CSRRCM;  
@@ -108,13 +108,13 @@ module csr import cvw::*;  #(parameter cvw_t P) (
   logic [P.XLEN-1:0]       MEPC_REGW, SEPC_REGW;
   logic [31:0]             MCOUNTINHIBIT_REGW, MCOUNTEREN_REGW, SCOUNTEREN_REGW;
   logic                    WriteMSTATUSM, WriteMSTATUSHM, WriteSSTATUSM;
-  logic                    CSRMWriteM, CSRSWriteM, CSRUWriteM;
+  logic                    CSRMWriteM, CSRSWriteM, CSRUWriteM, CSREWriteM;
   logic                    UngatedCSRMWriteM;
   logic                    WriteFRMM, SetOrWriteFFLAGSM;
   logic [P.XLEN-1:0]       UnalignedNextEPCM, NextEPCM, NextMtvalM;
   logic [4:0]              NextCauseM;
   logic [11:0]             CSRAdrM;
-  logic                    IllegalCSRCAccessM, IllegalCSRMAccessM, IllegalCSRSAccessM, IllegalCSRUAccessM;
+  logic                    IllegalCSRCAccessM, IllegalCSRMAccessM, IllegalCSRSAccessM, IllegalCSRUAccessM; IllegalCSREAccessM
   logic                    InsufficientCSRPrivilegeM;
   logic                    IllegalCSRMWriteReadonlyM;
   logic [P.XLEN-1:0]       CSRReadVal2M;
@@ -126,6 +126,7 @@ module csr import cvw::*;  #(parameter cvw_t P) (
   logic                    InstrValidNotFlushedM;
   logic                    STimerInt;
   logic [63:0]             MENVCFG_REGW;
+  logic [63:0]             MSECCFG_REGW;
   logic [P.XLEN-1:0]       SENVCFG_REGW;
   logic                    ENVCFG_STCE; // supervisor timer counter enable
   logic                    ENVCFG_FIOM; // fence implies io (presently not used)
@@ -206,7 +207,10 @@ module csr import cvw::*;  #(parameter cvw_t P) (
   assign UngatedCSRMWriteM = CSRWriteM & (PrivilegeModeW == P.M_MODE);
   assign CSRMWriteM = UngatedCSRMWriteM & InstrValidNotFlushedM;
   assign CSRSWriteM = CSRWriteM & (|PrivilegeModeW) & InstrValidNotFlushedM;
-  assign CSRUWriteM = CSRWriteM  & InstrValidNotFlushedM;
+  assign CSRUWriteM = CSRWriteM & InstrValidNotFlushedM;
+
+  assign CSREWriteM = CSRWriteM & InstrValidNotFlushedM;
+
   assign MTrapM = TrapM & (NextPrivilegeModeM == P.M_MODE);
   assign STrapM = TrapM & (NextPrivilegeModeM == P.S_MODE) & P.S_SUPPORTED;
 
@@ -236,7 +240,15 @@ module csr import cvw::*;  #(parameter cvw_t P) (
     .MEDELEG_REGW, .MIDELEG_REGW,.PMPCFG_ARRAY_REGW, .PMPADDR_ARRAY_REGW,
     .MIP_REGW, .MIE_REGW, .WriteMSTATUSM, .WriteMSTATUSHM,
     .IllegalCSRMAccessM, .IllegalCSRMWriteReadonlyM,
-    .MENVCFG_REGW);
+    .MENVCFG_REGW, .MSECCFG_REGW);
+
+
+  // entropy source csr ... checking for for M-mode, S-mode, or U-mode ... maybe even the V modes
+  // The check is necessary to implement access control via the mseccfg csr
+  csre #(P) csre(.clk, .reset,
+    .CSREWriteM, .CSRAdrM,
+    .CSRWriteValM, .CSREReadValM,
+    .IllegalCSREAccessM);
 
 
   if (P.S_SUPPORTED) begin:csrs

@@ -51,12 +51,14 @@ module csrm  import cvw::*;  #(parameter cvw_t P) (
   /* verilator lint_on UNDRIVEN */
   output logic                     WriteMSTATUSM, WriteMSTATUSHM,
   output logic                     IllegalCSRMAccessM, IllegalCSRMWriteReadonlyM,
-  output logic [63:0]              MENVCFG_REGW
+  output logic [63:0]              MENVCFG_REGW,
+  output logic [63:0]              MSECCFG_REGW
 );
 
   logic [P.XLEN-1:0]               MISA_REGW, MHARTID_REGW;
   logic [P.XLEN-1:0]               MSCRATCH_REGW, MTVAL_REGW, MCAUSE_REGW;
   logic [P.XLEN-1:0]               MENVCFGH_REGW;
+  logic [P.XLEN-1:0]               MSECCFGH_REGW;
   logic [P.XLEN-1:0]               TVECWriteValM;
   logic                            WriteMTVECM, WriteMEDELEGM, WriteMIDELEGM;
   logic                            WriteMSCRATCHM, WriteMEPCM, WriteMCAUSEM, WriteMTVALM;
@@ -89,6 +91,8 @@ module csrm  import cvw::*;  #(parameter cvw_t P) (
   localparam PMPADDR0      = 12'h3B0;
   // ... up to 63 more at consecutive addresses
   /* verilator lint_off UNUSEDPARAM */
+  localparam MSECCFG       = 12'h747;
+  localparam MSECCFGH      = 12'h757;
   localparam TSELECT       = 12'h7A0;
   localparam TDATA1        = 12'h7A1;
   localparam TDATA2        = 12'h7A2;
@@ -213,6 +217,25 @@ module csrm  import cvw::*;  #(parameter cvw_t P) (
     assign MENVCFG_REGW = '0;
     assign MENVCFGH_REGW = '0;
   end
+
+  // MSECCFG register
+  logic WriteMSECCFGM;
+  logic [63:0] MSECCFG_PreWriteValM, MSECCFG_WriteValM;
+  logic SSEED, USEED;
+  logic RLB, MMWP, MML;
+  // logic [1:0] LegalizedCBIE;
+  assign WriteMSECCFGM = CSRMWriteM & (CSRAdrM == MSECCFG);
+  // assign LegalizedCBIE = MENVCFG_PreWriteValM[5:4] == 2'b10 ? MENVCFG_REGW[5:4] : MENVCFG_PreWriteValM[5:4]; // Assume WARL for reserved CBIE = 10, keeps old value
+  assign MSECCFG_WriteValM = {
+    54'b0,
+    SSEED,
+    USEED,
+    5'b0,
+    RLB,
+    MMWP,
+    MML
+  };
+
 
   // Read machine mode CSRs
   // verilator lint_off WIDTH
