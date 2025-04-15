@@ -246,7 +246,8 @@ module csr import cvw::*;  #(parameter cvw_t P) (
   // entropy source csr ... checking for for M-mode, S-mode, or U-mode ... maybe even the V modes
   // The check is necessary to implement access control via the mseccfg csr
   csre #(P) csre(.clk, .reset,
-    .CSREWriteM, .CSRAdrM,
+    .PrivilegeModeW,
+    .CSREWriteM, .MSECCFG_REGW, .CSRAdrM,
     .CSRWriteValM, .CSREReadValM,
     .IllegalCSREAccessM);
 

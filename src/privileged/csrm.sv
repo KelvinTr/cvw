@@ -223,9 +223,7 @@ module csrm  import cvw::*;  #(parameter cvw_t P) (
   logic [63:0] MSECCFG_PreWriteValM, MSECCFG_WriteValM;
   logic SSEED, USEED;
   logic RLB, MMWP, MML;
-  // logic [1:0] LegalizedCBIE;
   assign WriteMSECCFGM = CSRMWriteM & (CSRAdrM == MSECCFG);
-  // assign LegalizedCBIE = MENVCFG_PreWriteValM[5:4] == 2'b10 ? MENVCFG_REGW[5:4] : MENVCFG_PreWriteValM[5:4]; // Assume WARL for reserved CBIE = 10, keeps old value
   assign MSECCFG_WriteValM = {
     54'b0,
     SSEED,

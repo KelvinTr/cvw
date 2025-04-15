@@ -27,9 +27,15 @@
 // and limitations under the License.
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+// NOTE: Maybe this can be merged with CSRM.sv... just a thought
+
+
+
 module csre import cvw::*;  #(parameter cvw_t P) (
-  input  logic              clk, reset, 
+  input  logic              clk, reset,
+  input  logic [1:0]        PrivilegeModeW,
   input  logic              CSREWriteM,
+  input  logic [63:0]       MSECCFG_REGW,
   input  logic [11:0]       CSRAdrM,
   input  logic [P.XLEN-1:0] CSRWriteValM,
   output logic [P.XLEN-1:0] CSREReadValM,  
@@ -39,14 +45,15 @@ module csre import cvw::*;  #(parameter cvw_t P) (
   localparam SEED   = 12'h015;
 
   logic [P.XLEN-1:0]        SEED_REGW;
-  logic [P.XLEN-1:0]        NextSEED;
-  logic                     SeedEnable;
-  logic                     WriteSEED;
+  logic [31:0]              NextSEED;
+  // logic                     WriteSEED;
+  // logic                     SeedEnable;
   
   // Write enables
-  assign WriteSEED = CSREWriteM & (CSRAdrM == SEED);
+  // assign WriteSEED = CSREWriteM & (CSRAdrM == SEED);
 
   // Write Values -- Entropy Source Instantiation
+  // Note: new update to the entropy_top.sv makes the enable_i useless
   entropy_top #(.NUM_CELLS(9), .NUM_INV_START(9), .SIM_MODE(1)) entropy 
   (
     .clk(clk),
@@ -54,19 +61,61 @@ module csre import cvw::*;  #(parameter cvw_t P) (
     .enable_i(enable_i),
     .seed(NextSEED)
   );
+  
 
-  // CSRs
-  flopenr #(32) SEEDreg(clk, reset, SeedEnable, NextSEED, SEED_REGW);
-
-  // CSR Reads
+  // Entropy Source Access Control via MSECCFG
+  // VS, VU, and HS mode implementation later?
   always_comb begin
-    IllegalCSREAccessM = 1'b0;
-    case (CSRAdrM) 
-      SEED:      CSREReadValM = {{(P.XLEN-32){1'b0}}, SEED_REGW};
-      default: begin
-                  CSREReadValM = '0; 
-                  IllegalCSREAccessM = 1'b1;
-      end         
-    endcase
+    // SEED CSR
+    if (PrivilegeModeW == P.M_MODE)begin
+      SEED_REGW = {{(P.XLEN-32){1'b0}}, NextSEED};
+    end else if (P.U_SUPPORTED | P.S_SUPPORTED) begin
+      IllegalCSREAccessM = 1'b0;
+      case({PrivilegeModeW, MSECCFG_REGW[9:8]})
+        4'b11xx: begin
+                        SEED_REGW = {{(P.XLEN-32){1'b0}}, NextSEED};
+        end
+        4'b00x0: begin
+                        SEED_REGW = '0;
+                        IllegalCSREAccessM = 1'b1;
+        end
+        4'b00x1: begin
+                        SEED_REGW = {{(P.XLEN-32){1'b0}}, NextSEED};
+        end
+        4'b010x: begin
+                        SEED_REGW = '0;
+                        IllegalCSREAccessM = 1'b1;
+        end
+        4'b011x: begin
+                        SEED_REGW = {{(P.XLEN-32){1'b0}}, NextSEED};
+        end
+        default: begin
+                        SEED_REGW = '0;
+                        IllegalCSREAccessM = 1'b1;
+        end
+      endcase
+    end
+
+    // CSR Reads
+    if (CSRAdrM == SEED)  CSREReadValM = SEED_REGW;
+    else begin
+                          CSREReadValM = '0; 
+                          IllegalCSREAccessM = 1'b1;
+    end
   end
+
+  // // CSRs
+  // flopenr #(32) SEEDreg(clk, reset, SeedEnable, NextSEED, SEED_REGW);
+
+  // // CSR Reads
+  // always_comb begin
+  //   IllegalCSREAccessM = 1'b0;
+  //   case (CSRAdrM) 
+  //     SEED:       CSREReadValM = {{(P.XLEN-32){1'b0}}, SEED_REGW};
+  //     default: begin
+  //                 CSREReadValM = '0; 
+  //                 IllegalCSREAccessM = 1'b1;
+  //     end         
+  //   endcase
+  // end
 endmodule
