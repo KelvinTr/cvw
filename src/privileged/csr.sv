@@ -114,7 +114,7 @@ module csr import cvw::*;  #(parameter cvw_t P) (
   logic [P.XLEN-1:0]       UnalignedNextEPCM, NextEPCM, NextMtvalM;
   logic [4:0]              NextCauseM;
   logic [11:0]             CSRAdrM;
-  logic                    IllegalCSRCAccessM, IllegalCSRMAccessM, IllegalCSRSAccessM, IllegalCSRUAccessM; IllegalCSREAccessM
+  logic                    IllegalCSRCAccessM, IllegalCSRMAccessM, IllegalCSRSAccessM, IllegalCSRUAccessM, IllegalCSREAccessM;
   logic                    InsufficientCSRPrivilegeM;
   logic                    IllegalCSRMWriteReadonlyM;
   logic [P.XLEN-1:0]       CSRReadVal2M;
